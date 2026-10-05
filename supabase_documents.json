@@ -31,7 +31,7 @@
       "name": "Google Drive Trigger",
       "credentials": {
         "googleDriveOAuth2Api": {
-          "id": "VROSEcOrWklFZuOB",
+          "id": "*******",
           "name": "Google Drive account"
         }
       }
