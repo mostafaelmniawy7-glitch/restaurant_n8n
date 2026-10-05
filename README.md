@@ -1,4 +1,5 @@
-# restaurant_n8n# AI Restaurant Bot — Telegram & Google Sheets
+# restaurant_n8n # 
+AI Restaurant Bot — Telegram & Google Sheets
 
 An intelligent restaurant chatbot built with n8n that handles customer orders, answers menu questions, and manages everything through Google Sheets.
 
