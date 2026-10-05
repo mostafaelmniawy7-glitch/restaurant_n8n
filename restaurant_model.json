@@ -19,7 +19,7 @@
       "webhookId": "c25523ce-e047-4455-93c6-945ede22a8d1",
       "credentials": {
         "telegramApi": {
-          "id": "tlc1UEdKqF0KTew4",
+          "id": "********4",
           "name": "Telegram account"
         }
       }
@@ -232,7 +232,7 @@
         304
       ],
       "credentials": {
-        "googleSheetsOAuth2Api": {
+        "*********": {
           "id": "iSGqAWe4LSI3oJ1s",
           "name": "Google Sheets account"
         }
@@ -516,7 +516,7 @@
       ],
       "credentials": {
         "supabaseApi": {
-          "id": "jHf91rCtYwCQ9qVZ",
+          "id": "********",
           "name": "Supabase account 2"
         }
       }
@@ -560,7 +560,7 @@
       "webhookId": "80a52e69-2eb3-45b6-934f-54553a388333",
       "credentials": {
         "telegramApi": {
-          "id": "tlc1UEdKqF0KTew4",
+          "id": "*******",
           "name": "Telegram account"
         }
       }
