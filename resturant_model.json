@@ -1,0 +1,909 @@
+{
+  "name": "resturant_model",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "id": "9d5089d5-5342-4429-a6ce-91ec02150333",
+      "name": "Telegram Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.5,
+      "position": [
+        0,
+        16
+      ],
+      "webhookId": "c25523ce-e047-4455-93c6-945ede22a8d1",
+      "credentials": {
+        "telegramApi": {
+          "id": "tlc1UEdKqF0KTew4",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.message.text }}",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "### ROLE\nYou are the customer support router for our restaurant. Read the customer's message and route it to exactly one specialist.\n\n### SPECIALISTS\n- Questions Expert: questions about the menu, dishes, prices, ingredients, opening hours, location or restaurant policies.\n- Orders Expert: the customer wants to place, change or cancel an order, asks about an existing order, shares an order ID, chooses items, or provides personal details (name, phone, address).\n- Generalist: greetings, thanks, small talk or anything else.\n\n### OUTPUT\nReply with JSON only, no extra text:\n{\"employee\": \"Questions Expert\"}"
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "id": "04348887-6c7a-4b40-91a6-7dc900a09742",
+      "name": "Classify Intent",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        272,
+        32
+      ],
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.text }}",
+                    "rightValue": "Questions Expert",
+                    "operator": {
+                      "type": "string",
+                      "operation": "contains"
+                    },
+                    "id": "e8494096-c913-48aa-b117-ee681c559057"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "question"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "2316e453-005a-4d19-b648-d852051dd690",
+                    "leftValue": "={{ $json.text }}",
+                    "rightValue": "Orders Expert",
+                    "operator": {
+                      "type": "string",
+                      "operation": "contains"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "order"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "468a34ce-ed5b-402c-ae21-980020aa2d2d",
+                    "leftValue": "={{ $json.text }}",
+                    "rightValue": "Generalist",
+                    "operator": {
+                      "type": "string",
+                      "operation": "contains"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "general"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra",
+          "renameFallbackOutput": "fallback"
+        }
+      },
+      "id": "d20805f8-ca1e-4e13-9f30-b1391f1f06bb",
+      "name": "Route by Intent",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        640,
+        32
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "25fea3fb-19b6-4f7a-b061-0515e50d1272",
+              "name": "system prompt",
+              "value": "### ROLE\nYou are the restaurant's menu and information expert, replying to customers on Telegram.\n\n### TOOLS\n- restaurant_knowledge_base: official information about the restaurant and its menu. Always search it before answering.\n\n### INSTRUCTIONS\n- Answer only from the knowledge base. If the answer is not there, say so politely and offer help with something else. Never invent prices, dishes or policies.\n- Keep replies short, friendly and clear. Reply in the same language the customer writes in.\n- If the customer wants to order, offer to take the order.",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "46197dd0-1b2a-40fb-ae4e-263edcd06679",
+      "name": "Questions Prompt",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        992,
+        -144
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $('Telegram Trigger').item.json.message.text }}",
+        "options": {
+          "systemMessage": "={{ $json[\"system prompt\"] }}"
+        }
+      },
+      "id": "b5044df8-c9c1-4abf-97ae-cd2c0f585768",
+      "name": "Restaurant Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        1296,
+        16
+      ]
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "contextWindowLength": 10
+      },
+      "id": "7894f5c8-4abf-41c7-8ad5-86733edf3ccd",
+      "name": "Simple Memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.4,
+      "position": [
+        1312,
+        336
+      ]
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Look up an existing order in the orders sheet by its 4-digit Order ID and return its items, price, customer details and current status.",
+        "documentId": {
+          "__rl": true,
+          "value": "1Cb16BAfUriXibKrroJ7jNgNgHXCdF0jRdIKysBxS8nc",
+          "mode": "list",
+          "cachedResultName": "mostafa resturant",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Cb16BAfUriXibKrroJ7jNgNgHXCdF0jRdIKysBxS8nc/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Cb16BAfUriXibKrroJ7jNgNgHXCdF0jRdIKysBxS8nc/edit#gid=0"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "Order ID",
+              "lookupValue": "={{ $fromAI(\"order_id\", \"The 4-digit order ID the customer provided\", \"string\") }}"
+            }
+          ]
+        },
+        "combineFilters": "OR",
+        "options": {}
+      },
+      "id": "17fbe38e-648d-4a7f-9526-98c9f79edc0e",
+      "name": "orders_sheet_read_tool",
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.7,
+      "position": [
+        1472,
+        304
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "iSGqAWe4LSI3oJ1s",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Add a new confirmed order as a row in the orders sheet. Only call after generating the order ID with code_tool and confirming all details with the customer.",
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1Cb16BAfUriXibKrroJ7jNgNgHXCdF0jRdIKysBxS8nc",
+          "mode": "list",
+          "cachedResultName": "mostafa resturant"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Time": "={{ $now.toFormat(\"yyyy-MM-dd HH:mm\") }}",
+            "Item": "={{ $fromAI(\"items\", \"Ordered items with quantities\", \"string\") }}",
+            "price": "={{ $fromAI(\"price\", \"Total order price\", \"string\") }}",
+            "Order ID": "={{ $fromAI(\"order_id\", \"The 4-digit order ID generated by code_tool\", \"string\") }}",
+            "Name": "={{ [$('Telegram Trigger').item.json.message.from.first_name, $('Telegram Trigger').item.json.message.from.last_name].filter(Boolean).join(\" \") }}",
+            "Phone": "={{ $fromAI(\"phone\", \"Customer phone number\", \"string\") }}",
+            "address": "={{ $fromAI(\"address\", \"Customer delivery address\", \"string\") }}",
+            "status": "in kitchen"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Time",
+              "displayName": "Time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Item",
+              "displayName": "Item",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "price",
+              "displayName": "price",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Order ID",
+              "displayName": "Order ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Phone",
+              "displayName": "Phone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "address",
+              "displayName": "address",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "e8c82e9b-ccaa-43d5-b7a4-d8154dc798dc",
+      "name": "orders_sheet_write_tool",
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.7,
+      "position": [
+        1632,
+        272
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "iSGqAWe4LSI3oJ1s",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Cancel an existing order by setting its status to Cancelled, matched by Order ID. Only call after the customer confirms the cancellation.",
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1Cb16BAfUriXibKrroJ7jNgNgHXCdF0jRdIKysBxS8nc",
+          "mode": "list",
+          "cachedResultName": "mostafa resturant"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "matchingColumns": [
+            "Order ID"
+          ],
+          "value": {
+            "Order ID": "={{ $fromAI(\"order_id\", \"The 4-digit ID of the order to cancel\", \"string\") }}",
+            "status": "Cancelled"
+          },
+          "schema": [
+            {
+              "id": "Time",
+              "displayName": "Time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Item",
+              "displayName": "Item",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "price",
+              "displayName": "price",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Order ID",
+              "displayName": "Order ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Phone",
+              "displayName": "Phone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "address",
+              "displayName": "address",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "1dc77c33-0e3a-4f40-b920-88ad1cf8cb18",
+      "name": "order_sheet_cancel_tool",
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.7,
+      "position": [
+        1808,
+        240
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "iSGqAWe4LSI3oJ1s",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "description": "Generates a unique random 4-digit order ID. Call this before orders_sheet_write_tool.",
+        "jsCode": "const id = Math.floor(1000 + Math.random() * 9000);\nreturn String(id);"
+      },
+      "id": "a0b2f0c9-6a07-4f28-a571-d02755a8d9d0",
+      "name": "code_tool",
+      "type": "@n8n/n8n-nodes-langchain.toolCode",
+      "typeVersion": 1.3,
+      "position": [
+        1952,
+        224
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "toolDescription": "Search the restaurant knowledge base for official information about the menu (dishes, ingredients, prices, sizes, allergens, offers) and the restaurant itself (opening hours, location, delivery areas, payment methods, policies). Use it for any factual question about the restaurant or menu, and to confirm item names and prices before placing an order. Pass a short, specific search query.",
+        "tableName": {
+          "__rl": true,
+          "value": "documents",
+          "mode": "list",
+          "cachedResultName": "documents"
+        },
+        "options": {}
+      },
+      "id": "6a8cf5db-c13d-48d8-b490-f8d7f2bab35b",
+      "name": "restaurant_knowledge_base",
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreSupabase",
+      "typeVersion": 1.3,
+      "position": [
+        1808,
+        -96
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "jHf91rCtYwCQ9qVZ",
+          "name": "Supabase account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "871e4fbd-af51-44b1-83b6-2e51a8f18fd5",
+      "name": "Embeddings OpenAI",
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        1968,
+        64
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": null,
+          "name": "",
+          "__aiGatewayManaged": true
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "={{ $json.output }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "7d2de9d5-2255-4343-ada8-bee1136b855d",
+      "name": "Send Reply",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        2176,
+        -16
+      ],
+      "webhookId": "80a52e69-2eb3-45b6-934f-54553a388333",
+      "credentials": {
+        "telegramApi": {
+          "id": "tlc1UEdKqF0KTew4",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "65d70503-e906-4c37-b923-0208e66453c1",
+              "name": "system prompt",
+              "value": "### ROLE\nYou manage orders for our restaurant on Telegram: placing new orders, cancelling orders and answering questions about existing orders.\n\n### TOOLS\n- restaurant_knowledge_base: menu items and prices. Use it to confirm item names and calculate the total price.\n- orders_sheet_read_tool: look up an EXISTING order by its 4-digit Order ID (only for checking or cancelling).\n- code_tool: generate a unique 4-digit Order ID yourself. Always call it before saving a new order.\n- orders_sheet_write_tool: save a new confirmed order.\n- order_sheet_cancel_tool: cancel an order by its Order ID.\n\n### PLACING AN ORDER\nIMPORTANT: The Order ID is created by YOU with code_tool. NEVER ask the customer for an Order ID or any code when they are placing a new order, and never call orders_sheet_read_tool for a new order.\n1. Ask the customer ONLY for: the items with quantities, their phone number and their delivery address. Do not ask for their name or anything else.\n2. Confirm the items and total price against the knowledge base.\n3. Summarize the order and ask the customer to confirm.\n4. After confirmation, generate the Order ID with code_tool, then save the order with orders_sheet_write_tool (use the customer's Telegram name for the name field).\n5. Send the customer their new Order ID and a short summary.\n\n### CANCELLING OR CHECKING AN ORDER\n- Only when the customer wants to check or cancel an EXISTING order: get the Order ID from the conversation history, or ask the customer for it if it is not there.\n- Look the order up first. If no order matches the ID, tell the customer the order was not found and offer to place it again.\n- Ask for confirmation before cancelling, then confirm once it is cancelled.\n\n### STYLE\nBe polite, concise and professional. Reply in the same language the customer writes in.",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "031415a9-8a9f-43ec-9134-75efdefa123e",
+      "name": "Orders Prompt",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        1008,
+        48
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "7d65c9d3-737d-4c69-a7c7-80927e9bd1bd",
+              "name": "system prompt",
+              "value": "You are the friendly customer support assistant of our restaurant on Telegram. Greet customers warmly, handle small talk briefly, and guide them toward what we can help with: questions about the menu and restaurant, or placing, checking and cancelling orders. You can search restaurant_knowledge_base for restaurant information. Keep replies short and reply in the same language the customer writes in.",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "f1085e76-a9f0-441c-8dd2-cd2e906311cb",
+      "name": "General Prompt",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        992,
+        256
+      ]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-5-mini"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        224,
+        208
+      ],
+      "id": "1e5b260d-ffc7-4985-a5a8-95a5e7c3fdce",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": null,
+          "name": "",
+          "__aiGatewayManaged": true
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-5-mini"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        1168,
+        224
+      ],
+      "id": "60be5c38-c55b-4b2b-8cf9-f19a05f754a7",
+      "name": "OpenAI Chat Model1",
+      "credentials": {
+        "openAiApi": {
+          "id": null,
+          "name": "",
+          "__aiGatewayManaged": true
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Classify Intent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Classify Intent": {
+      "main": [
+        [
+          {
+            "node": "Route by Intent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route by Intent": {
+      "main": [
+        [
+          {
+            "node": "Questions Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Orders Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "General Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "General Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Questions Prompt": {
+      "main": [
+        [
+          {
+            "node": "Restaurant Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Restaurant Agent": {
+      "main": [
+        [
+          {
+            "node": "Send Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "Restaurant Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "orders_sheet_read_tool": {
+      "ai_tool": [
+        [
+          {
+            "node": "Restaurant Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "orders_sheet_write_tool": {
+      "ai_tool": [
+        [
+          {
+            "node": "Restaurant Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "order_sheet_cancel_tool": {
+      "ai_tool": [
+        [
+          {
+            "node": "Restaurant Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "code_tool": {
+      "ai_tool": [
+        [
+          {
+            "node": "Restaurant Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "restaurant_knowledge_base": {
+      "ai_tool": [
+        [
+          {
+            "node": "Restaurant Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings OpenAI": {
+      "ai_embedding": [
+        [
+          {
+            "node": "restaurant_knowledge_base",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Orders Prompt": {
+      "main": [
+        [
+          {
+            "node": "Restaurant Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "General Prompt": {
+      "main": [
+        [
+          {
+            "node": "Restaurant Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Classify Intent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Restaurant Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true
+  },
+  "versionId": "778d2556-fe38-4869-bcd4-6bf5db98f317",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "889eb8c99fb0d2b879a29fcce4101c5056807687e42e12560f9b81fcb40e6aa4"
+  },
+  "nodeGroups": [
+    {
+      "id": "ea522471-cbfc-462d-b82f-a7fdb6f400dc",
+      "name": "Understand request",
+      "nodeIds": [
+        "04348887-6c7a-4b40-91a6-7dc900a09742",
+        "d20805f8-ca1e-4e13-9f30-b1391f1f06bb",
+        "1e5b260d-ffc7-4985-a5a8-95a5e7c3fdce"
+      ],
+      "description": "Reads each Telegram message and decides whether it is a menu question, an order request, or general chat"
+    },
+    {
+      "id": "fa64b1fd-849d-4f20-af53-a903efdd78a2",
+      "name": "Answer customer",
+      "nodeIds": [
+        "b5044df8-c9c1-4abf-97ae-cd2c0f585768",
+        "7894f5c8-4abf-41c7-8ad5-86733edf3ccd",
+        "17fbe38e-648d-4a7f-9526-98c9f79edc0e",
+        "e8c82e9b-ccaa-43d5-b7a4-d8154dc798dc",
+        "1dc77c33-0e3a-4f40-b920-88ad1cf8cb18",
+        "a0b2f0c9-6a07-4f28-a571-d02755a8d9d0",
+        "6a8cf5db-c13d-48d8-b490-f8d7f2bab35b",
+        "871e4fbd-af51-44b1-83b6-2e51a8f18fd5",
+        "7d2de9d5-2255-4343-ada8-bee1136b855d",
+        "60be5c38-c55b-4b2b-8cf9-f19a05f754a7"
+      ],
+      "description": "Replies on Telegram using the menu knowledge base and the orders sheet, remembering the last 10 messages per chat"
+    }
+  ],
+  "id": "Gm4Q6xsdkvVpSqrd",
+  "tags": []
+}
