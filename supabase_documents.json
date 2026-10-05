@@ -78,7 +78,7 @@
       "id": "f2a95000-0312-42f9-bdd2-6c391a909f93",
       "name": "Download file",
       "credentials": {
-        "googleDriveOAuth2Api": {
+        "*****": {
           "id": "VROSEcOrWklFZuOB",
           "name": "Google Drive account"
         }
@@ -121,7 +121,7 @@
       "name": "Supabase Vector Store",
       "credentials": {
         "supabaseApi": {
-          "id": "jHf91rCtYwCQ9qVZ",
+          "id": "*******",
           "name": "Supabase account 2"
         }
       }
